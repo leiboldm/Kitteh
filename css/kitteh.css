@@ -1,0 +1,15 @@
+body {
+	width: 100%;
+	height: 100%;
+	margin: 0;
+	padding: 0;
+	background-image: url('../images/sheep.gif');
+	position: relative;
+}
+#playing_surface {
+	background: white;
+	position: absolute;
+	top: 5%;
+	left: 5%;
+	border: 1px solid black;
+}
