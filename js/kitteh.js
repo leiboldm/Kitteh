@@ -1,4 +1,4 @@
-var MOVEMENT_SPEED = 2;
+var MOVEMENT_SPEED = 5;
 var UPDATE_RATE = 30; // updates per second
 
 $(document).ready(function() {
@@ -16,9 +16,7 @@ $(document).ready(function() {
 	var game = new GameState(canvas, whiskers, 5, 2);
 	var start = confirm("Start game?");
 	if (start) {
-		var interval = setInterval(function() {
-			game.updateGameState();
-		}, 1000 / UPDATE_RATE);
+		game.startGame();
 	}
 });
 
@@ -35,31 +33,21 @@ function GameState(canvas, hero, enemy_frequency, kitty_frequency) {
 	this.kitty_frequency = kitty_frequency;
 	this.score = 0;
 
+	this.startGame = function() {
+		var that = this;
+		this.updateInterval = setInterval(function() {
+			that.updateGameState();
+		}, 1000 / UPDATE_RATE);	
+	}
+
 	this.updateGameState = function() {
 		this.iteration++;
-
 		if ((this.iteration / UPDATE_RATE) % this.enemy_frequency == 0) {
-			// spawn a new enemy
-			// spawn the new enemy far away from the hero so that it doesn't spawn kill the hero
-			var xr = this.boardWidth / 4; // randomness range for x coord
-			var yr = this.boardHeight / 4; // randomness range for y coord
-			var x = (this.hero.x > this.boardWidth / 2) ? 0 + randInt(0, xr) : this.boardWidth - randInt(0, xr);
-			var y = (this.hero.y > this.boardHeight / 2) ? 0 + randInt(0, yr) : this.boardHeight - randInt(0, yr);
-			var enemy = new Enemy(x, y, randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1,
-									 randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1);
-			enemy.init();
-			this.enemies.push(enemy);
+			this.spawnEnemy();
 		}
 		if ((this.iteration / UPDATE_RATE) % this.kitty_frequency == 0) {
-			// spawn a new kitty, put it anywhere
-			var x = randInt(0, this.boardWidth);
-			var y = randInt(0, this.boardHeight);
-			var kitty = new Kitty(x, y, randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1,
-									 randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1);
-			kitty.init();
-			this.kitties.push(kitty);
+			this.spawnKitty();
 		}
-
 		this.hero.move();
 		this.hero.checkBounds(this.boardWidth, this.boardHeight);
 		for (var i = 0; i < this.enemies.length; i++) {
@@ -70,14 +58,51 @@ function GameState(canvas, hero, enemy_frequency, kitty_frequency) {
 			this.kitties[i].move();
 			this.kitties[i].checkBounds(this.boardWidth, this.boardHeight);
 		}
+		this.checkCollisions();
 		this.drawBoard();
 	}
 
 	this.checkCollisions = function() {
 		// check the hero has not collided with an enemy
-		for (var i = 0; i < enemies.length; i++) {
-
+		for (var i = 0; i < this.enemies.length; i++) {
+			if (rectsOverlap(this.hero, this.enemies[i])) {
+				// hero died, game over
+				this.gameOver();
+			}
 		}
+		for (var i = 0; i < this.kitties.length; i++) {
+			if (rectsOverlap(this.hero, this.kitties[i])) {
+				this.score += 1;
+				this.kitties.splice(i, 1);
+			}
+		}
+	}
+
+	this.gameOver = function() {
+		clearInterval(this.updateInterval);
+	}
+
+	this.spawnEnemy = function() {
+		// spawn a new enemy
+		// spawn the new enemy far away from the hero so that it doesn't spawn kill the hero
+		var xr = this.boardWidth / 4; // randomness range for x coord
+		var yr = this.boardHeight / 4; // randomness range for y coord
+		var x = (this.hero.x > this.boardWidth / 2) ? 0 + randInt(0, xr) : this.boardWidth - randInt(0, xr);
+		var y = (this.hero.y > this.boardHeight / 2) ? 0 + randInt(0, yr) : this.boardHeight - randInt(0, yr);
+		var enemy = new Enemy(x, y, randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1,
+								 randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1);
+		enemy.init();
+		this.enemies.push(enemy);
+	}
+
+	this.spawnKitty = function() {
+		// spawn a new kitty, put it anywhere
+		var x = randInt(0, this.boardWidth);
+		var y = randInt(0, this.boardHeight);
+		var kitty = new Kitty(x, y, randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1,
+								 randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1);
+		kitty.init();
+		this.kitties.push(kitty);
 	}
 
 	this.drawBoard = function() {
