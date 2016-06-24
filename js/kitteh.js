@@ -106,8 +106,8 @@ function GameEngine(canvas, enemy_frequency, kitty_frequency) {
 		var x = (this.hero.x > this.boardWidth / 2) ? 0 + randInt(0, xr) : this.boardWidth - randInt(0, xr);
 		var y = (this.hero.y > this.boardHeight / 2) ? 0 + randInt(0, yr) : this.boardHeight - randInt(0, yr);
 		var enemy_speed = 4;
-		var enemy = new Enemy(x, y, randInt(-enemy_speed, enemy_speed) || 1,
-								 randInt(-enemy_speed, enemy_speed) || 1);
+		var speed = makeRandSpeed(enemy_speed);
+		var enemy = new Enemy(x, y, speed.dx, speed.dy);
 		enemy.init();
 		this.enemies.push(enemy);
 	}
@@ -117,8 +117,8 @@ function GameEngine(canvas, enemy_frequency, kitty_frequency) {
 		var x = randInt(0, this.boardWidth);
 		var y = randInt(0, this.boardHeight);
 		var kitty_speed = 5;
-		var kitty = new Kitty(x, y, randInt(-kitty_speed, kitty_speed) || 1,
-								 randInt(-kitty_speed, kitty_speed) || 1);
+		var speed = makeRandSpeed(kitty_speed);
+		var kitty = new Kitty(x, y, speed.dx, speed.dy);
 		kitty.init();
 		this.kitties.push(kitty);
 	}
@@ -162,17 +162,17 @@ Character.prototype.move = function() {
 
 Character.prototype.checkBounds = function(boardWidth, boardHeight) {
 	if (this.x < 0) {
-		this.dx = this.speed;
+		this.dx = -this.dx;
 		this.x = 0;
 	} else if (this.x > (boardWidth - this.width)) {
-		this.dx = -this.speed;
+		this.dx = -this.dx;
 		this.x = boardWidth - this.width;
 	}
 	if (this.y < 0) {
-		this.dy = this.speed;
+		this.dy = -this.dy;
 		this.y = 0;
 	} else if (this.y > (boardHeight - this.height)) {
-		this.dy = -this.speed;
+		this.dy = -this.dy;
 		this.y = boardHeight - this.height;
 	}
 }
@@ -248,5 +248,15 @@ function rectsOverlap(rect1, rect2) {
 	} else {
 		return false;
 	}
+}
+
+function makeRandSpeed(max_speed) {
+	var dx = 0;
+	var dy = 0;
+	do {
+		dx = randInt(-max_speed, max_speed);
+		dy = randInt(-max_speed, max_speed);
+	} while (dx < 1 && dy < 1);
+	return {"dx": dx, "dy": dy};
 }
 
