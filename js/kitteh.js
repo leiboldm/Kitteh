@@ -1,4 +1,3 @@
-var MOVEMENT_SPEED = 5;
 var UPDATE_RATE = 30; // updates per second
 
 $(document).ready(function() {
@@ -10,31 +9,31 @@ $(document).ready(function() {
 
 	Math.seedrandom("Hello");
 
-	var whiskers = new Hero();
-	whiskers.init();
-
-	var game = new GameState(canvas, whiskers, 5, 2);
+	var game = new GameEngine(canvas, 10, 2);
 	var start = confirm("Start game?");
 	if (start) {
 		game.startGame();
 	}
 });
 
-function GameState(canvas, hero, enemy_frequency, kitty_frequency) {
+function GameEngine(canvas, enemy_frequency, kitty_frequency) {
 	this.canvas = canvas;
 	this.context = canvas.getContext("2d");
-	this.hero = hero;
-	this.enemies = [];
-	this.kitties = [];
 	this.boardHeight = canvas.height;
 	this.boardWidth = canvas.width;
-	this.iteration = 0;
 	this.enemy_frequency = enemy_frequency;
 	this.kitty_frequency = kitty_frequency;
-	this.score = 0;
 
 	this.startGame = function() {
+		this.hero = new Hero();
+		this.hero.init();
+		this.score = 0;
+		this.iteration = 0;
+		this.enemies = [];
+		this.kitties = [];
 		var that = this;
+		this.spawnKitty(); this.spawnKitty();
+		this.spawnEnemy(); this.spawnEnemy();
 		this.updateInterval = setInterval(function() {
 			that.updateGameState();
 		}, 1000 / UPDATE_RATE);	
@@ -58,8 +57,8 @@ function GameState(canvas, hero, enemy_frequency, kitty_frequency) {
 			this.kitties[i].move();
 			this.kitties[i].checkBounds(this.boardWidth, this.boardHeight);
 		}
-		this.checkCollisions();
 		this.drawBoard();
+		this.checkCollisions();
 	}
 
 	this.checkCollisions = function() {
@@ -80,6 +79,23 @@ function GameState(canvas, hero, enemy_frequency, kitty_frequency) {
 
 	this.gameOver = function() {
 		clearInterval(this.updateInterval);
+		var gameOverText = "Game Over. Final score: " + this.score.toString();
+		var playAgainText = "Play again?";
+		var fontSize = 20;
+		this.context.font = fontSize.toString() + "px Arial";
+		var textSize = this.context.measureText(gameOverText);
+		this.context.fillStyle = "#bcfade";
+		this.context.fillRect(this.boardWidth / 2 - (textSize.width),
+							this.boardHeight / 2 - fontSize, 
+							textSize.width * 2, 
+							fontSize * 2);
+		this.context.fillStyle = "#000000";
+		this.context.fillText(gameOverText, this.boardWidth / 2 - (textSize.width / 2),
+							 this.boardHeight / 2 + (fontSize / 2));
+		var play_again = confirm("Play again?");
+		if (play_again) {
+			this.startGame();
+		}
 	}
 
 	this.spawnEnemy = function() {
@@ -89,8 +105,9 @@ function GameState(canvas, hero, enemy_frequency, kitty_frequency) {
 		var yr = this.boardHeight / 4; // randomness range for y coord
 		var x = (this.hero.x > this.boardWidth / 2) ? 0 + randInt(0, xr) : this.boardWidth - randInt(0, xr);
 		var y = (this.hero.y > this.boardHeight / 2) ? 0 + randInt(0, yr) : this.boardHeight - randInt(0, yr);
-		var enemy = new Enemy(x, y, randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1,
-								 randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1);
+		var enemy_speed = 4;
+		var enemy = new Enemy(x, y, randInt(-enemy_speed, enemy_speed) || 1,
+								 randInt(-enemy_speed, enemy_speed) || 1);
 		enemy.init();
 		this.enemies.push(enemy);
 	}
@@ -99,8 +116,9 @@ function GameState(canvas, hero, enemy_frequency, kitty_frequency) {
 		// spawn a new kitty, put it anywhere
 		var x = randInt(0, this.boardWidth);
 		var y = randInt(0, this.boardHeight);
-		var kitty = new Kitty(x, y, randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1,
-								 randInt(-MOVEMENT_SPEED, MOVEMENT_SPEED) || 1);
+		var kitty_speed = 5;
+		var kitty = new Kitty(x, y, randInt(-kitty_speed, kitty_speed) || 1,
+								 randInt(-kitty_speed, kitty_speed) || 1);
 		kitty.init();
 		this.kitties.push(kitty);
 	}
@@ -109,10 +127,9 @@ function GameState(canvas, hero, enemy_frequency, kitty_frequency) {
 		this.context.clearRect(0, 0, this.boardWidth, this.boardHeight);
 		var fontsize = 24;
 		this.context.font = fontsize.toString() + "px Arial";
-		var ARIAL_ASPECT_RATIO = 0.52
 		var score_str = "Score: " + this.score.toString();
-		this.context.fillText(score_str, 
-			this.boardWidth - (ARIAL_ASPECT_RATIO * fontsize * score_str.length), fontsize);
+		var text_width = this.context.measureText(score_str).width;
+		this.context.fillText(score_str, this.boardWidth - text_width, fontsize);
 		this.hero.draw(this.context);
 		for (var i = 0; i < this.enemies.length; i++) {
 			this.enemies[i].draw(this.context);
@@ -135,6 +152,7 @@ function Character(x, y, dx, dy) {
 	this.dy = dy || 0; // speed in the y direction
 	this.height = 50;
 	this.width = 50;
+	this.speed = 1;
 }
 
 Character.prototype.move = function() {
@@ -144,17 +162,17 @@ Character.prototype.move = function() {
 
 Character.prototype.checkBounds = function(boardWidth, boardHeight) {
 	if (this.x < 0) {
-		this.dx = MOVEMENT_SPEED;
+		this.dx = this.speed;
 		this.x = 0;
 	} else if (this.x > (boardWidth - this.width)) {
-		this.dx = -MOVEMENT_SPEED;
+		this.dx = -this.speed;
 		this.x = boardWidth - this.width;
 	}
 	if (this.y < 0) {
-		this.dy = MOVEMENT_SPEED;
+		this.dy = this.speed;
 		this.y = 0;
 	} else if (this.y > (boardHeight - this.height)) {
-		this.dy = -MOVEMENT_SPEED;
+		this.dy = -this.speed;
 		this.y = boardHeight - this.height;
 	}
 }
@@ -165,6 +183,7 @@ Character.prototype.draw = function(context) {
 
 function Hero() {
 	Character.call(this);
+	this.speed = 7;
 	this.init = function() {
 		this.img = new Image();
 		this.img.src = "images/whiskers.jpg";
@@ -174,16 +193,16 @@ function Hero() {
 	this.bindKeyboard = function () {
 		window.onkeydown = function(e) {
 			if (e.key == "ArrowRight") {
-				that.dx = MOVEMENT_SPEED;
+				that.dx = that.speed;
 				that.dy = 0;
 			} else if (e.key == "ArrowLeft") {
-				that.dx = (0 - MOVEMENT_SPEED);
+				that.dx = (0 - that.speed);
 				that.dy = 0;
 			} else if (e.key == "ArrowUp") {
-				that.dy = (0 - MOVEMENT_SPEED);
+				that.dy = (0 - that.speed);
 				that.dx = 0;
 			} else if (e.key == "ArrowDown") {
-				that.dy = MOVEMENT_SPEED;
+				that.dy = that.speed;
 				that.dx = 0;
 			}
 		}
@@ -194,6 +213,7 @@ inheritsFrom(Hero, Character);
 
 function Kitty(x, y, dx, dy) {
 	Character.call(this, x, y, dx, dy);
+	this.speed = 5;
 	this.init = function() {
 		this.img.src = "images/kitten.png";
 	}
@@ -202,6 +222,7 @@ inheritsFrom(Kitty, Character);
 
 function Enemy(x, y, dx, dy) {
 	Character.call(this, x, y, dx, dy);
+	this.speed = 4;
 	this.init = function() {
 		this.img.src = "images/dog.png";
 	}
@@ -228,5 +249,4 @@ function rectsOverlap(rect1, rect2) {
 		return false;
 	}
 }
-
 
